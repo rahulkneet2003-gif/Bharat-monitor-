@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BharatMonitor — India Intelligence Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --sf:#FF6B00;--sf2:#ff8c3a;--sfd:rgba(255,107,0,0.14);
+  --wh:#EDE8DC;--gr:#00A550;--gr2:#00cc66;--grd:rgba(0,165,80,0.13);
+  --nv:#05060F;--nv2:#090B1C;--nv3:#0D1025;--nv4:#111428;
+  --pn:rgba(9,11,28,0.97);--bl:rgba(255,107,0,0.15);--blW:rgba(235,230,220,0.06);
+  --tx:#B0AC9F;--txB:#CCC8BB;--txD:#504E4A;
+  --rd:#FF3A3A;--rdd:rgba(255,58,58,0.13);
+  --bu:#3A8FFF;--bud:rgba(58,143,255,0.13);
+  --yw:#FFD700;--ywd:rgba(255,215,0,0.11);
+  --gw:0 0 22px rgba(255,107,0,0.18);
+  --gwG:0 0 22px rgba(0,165,80,0.16);
+  --gwR:0 0 22px rgba(255,58,58,0.2);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--nv);color:var(--tx);
+  font-family:'Exo 2',sans-serif;
+  display:flex;flex-direction:column;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,107,0,0.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,107,0,0.022) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;z-index:0;
+}
+
+/* ── HEADER ── */
+header{
+  height:52px;display:flex;align-items:stretch;
+  background:rgba(5,6,15,0.99);border-bottom:1px solid var(--bl);
+  backdrop-filter:blur(20px);position:relative;z-index:1000;
+  box-shadow:0 2px 20px rgba(0,0,0,0.7);flex-shrink:0;
+}
+.logo-blk{
+  display:flex;align-items:center;gap:11px;padding:0 18px;
+  border-right:1px solid var(--bl);flex-shrink:0;
+}
+.logo-hex{
+  width:32px;height:32px;
+  background:linear-gradient(140deg,var(--sf),var(--gr));
+  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;animation:hexPulse 4s ease-in-out infinite;
+}
+@keyframes hexPulse{0%,100%{filter:brightness(1);}50%{filter:brightness(1.35) drop-shadow(0 0 8px rgba(255,107,0,0.55));}}
+.logo-nm{
+  font-family:'Rajdhani';font-size:19px;font-weight:700;letter-spacing:3px;
+  background:linear-gradient(90deg,var(--sf),var(--wh) 50%,var(--gr));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;
+}
+.logo-sb{font-size:8px;color:var(--txD);letter-spacing:4px;text-transform:uppercase;margin-top:1px;}
+.htabs{display:flex;align-items:stretch;flex:1;padding:0 6px;}
+.htab{
+  padding:0 14px;background:transparent;border:none;border-bottom:2px solid transparent;
+  color:var(--txD);font-family:'Rajdhani';font-size:12px;font-weight:600;
+  letter-spacing:2px;cursor:pointer;transition:all 0.18s;text-transform:uppercase;
+  display:flex;align-items:center;gap:6px;
+}
+.htab:hover{color:var(--tx);background:rgba(255,107,0,0.035);}
+.htab.on{color:var(--sf);border-bottom-color:var(--sf);background:rgba(255,107,0,0.055);}
+.htab .dot{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.7;}
+.hright{
+  display:flex;align-items:center;gap:12px;
+  padding:0 18px;border-left:1px solid var(--bl);flex-shrink:0;
+}
+.alert-pill{
+  font-family:'Share Tech Mono';font-size:10px;color:var(--rd);
+  background:var(--rdd);border:1px solid rgba(255,58,58,0.3);
+  padding:3px 10px;letter-spacing:1px;
+  animation:aPulse 2s ease-in-out infinite;
+}
+@keyframes aPulse{0%,100%{opacity:1;}55%{opacity:.55;}}
+.clock-box{font-family:'Share Tech Mono';font-size:12px;color:var(--wh);background:var(--sfd);border:1px solid var(--bl);padding:4px 10px;letter-spacing:1px;}
+.live-ind{display:flex;align-items:center;gap:5px;font-family:'Share Tech Mono';font-size:10px;color:var(--gr);letter-spacing:2px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--gr);box-shadow:0 0 7px var(--gr);animation:lp 1.5s ease-in-out infinite;}
+@keyframes lp{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* ── TICKER ── */
+.ticker{
+  height:26px;background:rgba(255,107,0,0.04);
+  border-bottom:1px solid var(--bl);overflow:hidden;
+  display:flex;align-items:center;flex-shrink:0;position:relative;z-index:10;
+}
+.ticker-lbl{
+  padding:0 12px;font-family:'Share Tech Mono';font-size:9px;
+  color:var(--sf);letter-spacing:2px;text-transform:uppercase;
+  border-right:1px solid var(--bl);height:100%;display:flex;align-items:center;
+  background:rgba(255,107,0,0.07);white-space:nowrap;flex-shrink:0;
+}
+.ticker-track{overflow:hidden;flex:1;}
+.ticker-row{display:flex;white-space:nowrap;animation:tick 70s linear infinite;align-items:center;height:26px;}
+@keyframes tick{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.ti{padding:0 24px;font-family:'Share Tech Mono';font-size:10px;border-right:1px solid rgba(255,107,0,0.09);display:flex;gap:7px;align-items:center;}
+.tl{color:var(--sf)}.tv{color:var(--txB)}.tu{color:var(--gr)}.td{color:var(--rd)}.tn{color:var(--yw);}
+
+/* ── MAIN ── */
+.main{display:grid;grid-template-columns:292px 1fr 306px;flex:1;min-height:0;position:relative;z-index:1;}
+
+/* ── SIDEBARS ── */
+.sb{background:var(--nv2);display:flex;flex-direction:column;overflow:hidden;}
+.sb-r{border-left:1px solid var(--bl);}
+.sb-l{border-right:1px solid var(--bl);}
+
+/* ── SECTION HEADERS ── */
+.sh{
+  padding:9px 13px;border-bottom:1px solid var(--bl);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,107,0,0.025);flex-shrink:0;
+}
+.sh-t{font-family:'Rajdhani';font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--sf);font-weight:700;}
+.sh-b{font-family:'Share Tech Mono';font-size:8px;padding:2px 8px;}
+.sh-b.or{background:var(--sfd);border:1px solid rgba(255,107,0,0.22);color:var(--sf);}
+.sh-b.gr{background:var(--grd);border:1px solid rgba(0,165,80,0.22);color:var(--gr);}
+.sh-b.rd{background:var(--rdd);border:1px solid rgba(255,58,58,0.28);color:var(--rd);}
+.sh-b.bl{background:var(--bud);border:1px solid rgba(58,143,255,0.25);color:var(--bu);}
+
+/* ── MAP ── */
+.mp{background:var(--nv3);display:flex;flex-direction:column;position:relative;}
+.mp-hdr{
+  padding:9px 14px;border-bottom:1px solid var(--bl);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(5,6,15,0.85);flex-shrink:0;z-index:500;
+}
+.mp-title{font-family:'Rajdhani';font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--sf);font-weight:700;}
+.mp-btns{display:flex;gap:6px;}
+.mb{
+  padding:3px 11px;background:transparent;border:1px solid var(--bl);
+  color:var(--txD);font-family:'Rajdhani';font-size:10px;letter-spacing:1px;
+  cursor:pointer;transition:all 0.18s;text-transform:uppercase;
+}
+.mb:hover,.mb.on{border-color:var(--sf);color:var(--sf);background:rgba(255,107,0,0.07);}
+#map{flex:1;min-height:0;}
+
+/* Leaflet overrides */
+.leaflet-container{background:#07091A!important;}
+.leaflet-control-attribution{display:none!important;}
+.leaflet-control-zoom{border:1px solid var(--bl)!important;box-shadow:none!important;border-radius:0!important;}
+.leaflet-control-zoom a{background:rgba(9,11,28,0.96)!important;color:var(--sf)!important;border:none!important;font-weight:700;line-height:26px!important;}
+.leaflet-control-zoom-in{border-bottom:1px solid var(--bl)!important;}
+.leaflet-control-zoom a:hover{background:rgba(255,107,0,0.13)!important;}
+.leaflet-tooltip{
+  background:rgba(7,9,26,0.97)!important;border:1px solid var(--bl)!important;
+  border-radius:0!important;font-family:'Exo 2',sans-serif!important;
+  color:var(--tx)!important;box-shadow:var(--gw)!important;padding:9px 13px!important;
+}
+.leaflet-popup-content-wrapper{background:rgba(7,9,26,0.97)!important;border:1px solid var(--bl)!important;border-radius:0!important;color:var(--tx)!important;}
+.leaflet-popup-tip{background:rgba(7,9,26,0.97)!important;}
+.leaflet-popup-content{margin:10px 14px!important;font-family:'Exo 2'!important;}
+
+.tt-n{color:var(--sf);font-weight:700;font-size:13px;margin-bottom:5px;font-family:'Rajdhani';letter-spacing:1px;}
+.tt-r{display:flex;justify-content:space-between;gap:18px;font-size:11px;margin-top:3px;color:var(--txD);}
+.tt-v{font-family:'Share Tech Mono';color:var(--txB);}
+
+/* Map overlays */
+.map-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,107,0,0.2),transparent);animation:sc 10s linear infinite;pointer-events:none;z-index:450;}
+@keyframes sc{0%{top:44px}100%{top:100%;}}
+.mc{position:absolute;width:18px;height:18px;z-index:460;pointer-events:none;}
+.mc.tl{top:44px;left:0;border-top:2px solid var(--sf);border-left:2px solid var(--sf);}
+.mc.tr{top:44px;right:0;border-top:2px solid var(--sf);border-right:2px solid var(--sf);}
+.mc.bl{bottom:0;left:0;border-bottom:2px solid var(--sf);border-left:2px solid var(--sf);}
+.mc.br{bottom:0;right:0;border-bottom:2px solid var(--sf);border-right:2px solid var(--sf);}
+.map-legend{
+  position:absolute;bottom:18px;right:10px;z-index:500;
+  background:rgba(5,6,15,0.93);border:1px solid var(--bl);padding:10px 12px;
+}
+.ml-h{font-family:'Share Tech Mono';font-size:8px;color:var(--txD);letter-spacing:2px;margin-bottom:7px;}
+.ml-i{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.ml-s{width:11px;height:11px;border-radius:1px;}
+.ml-l{font-family:'Share Tech Mono';font-size:9px;color:var(--tx);}
+.map-coord{position:absolute;bottom:18px;left:10px;z-index:500;font-family:'Share Tech Mono';font-size:9px;color:var(--txD);background:rgba(5,6,15,0.85);border:1px solid var(--blW);padding:4px 9px;letter-spacing:1px;}
+
+/* ── STATE LIST ── */
+.s-scrl{overflow-y:auto;flex:1;}
+.s-scrl::-webkit-scrollbar{width:2px;}.s-scrl::-webkit-scrollbar-thumb{background:var(--sf);}
+.s-row{
+  display:flex;align-items:center;gap:9px;padding:8px 13px;
+  border-bottom:1px solid var(--blW);cursor:pointer;transition:background 0.14s;
+}
+.s-row:hover{background:rgba(255,107,0,0.045);}
+.s-row.c{border-left:3px solid var(--rd);}
+.s-row.e{border-left:3px solid var(--sf);}
+.s-row.w{border-left:3px solid var(--yw);}
+.s-row.n{border-left:3px solid var(--gr);}
+.s-sc{font-family:'Share Tech Mono';font-size:19px;font-weight:700;min-width:36px;text-align:center;line-height:1;}
+.s-sc.c{color:var(--rd);} .s-sc.e{color:var(--sf);} .s-sc.w{color:var(--yw);} .s-sc.n{color:var(--gr);}
+.s-inf{flex:1;min-width:0;}
+.s-nm{font-size:12px;font-weight:600;color:var(--txB);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s-tgs{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;}
+.tag{font-size:7px;padding:1px 4px;letter-spacing:1px;text-transform:uppercase;font-family:'Share Tech Mono';white-space:nowrap;}
+.tr{background:rgba(255,58,58,0.1);border:1px solid rgba(255,58,58,0.22);color:#ff7777;}
+.to{background:var(--sfd);border:1px solid rgba(255,107,0,0.22);color:var(--sf);}
+.ty{background:var(--ywd);border:1px solid rgba(255,215,0,0.22);color:var(--yw);}
+.tg{background:var(--grd);border:1px solid rgba(0,165,80,0.2);color:var(--gr);}
+.tb{background:var(--bud);border:1px solid rgba(58,143,255,0.22);color:var(--bu);}
+.s-bar{height:2px;background:rgba(255,255,255,0.05);margin-top:4px;border-radius:1px;overflow:hidden;}
+.s-bf{height:100%;border-radius:1px;transition:width 1.2s ease;}
+
+/* ── INTEL INDEX ── */
+.ii-body{padding:8px 13px;}
+.ii-row{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid var(--blW);}
+.ii-lbl{font-size:11px;flex:1;color:var(--tx);}
+.ii-tr{width:68px;height:4px;background:rgba(255,255,255,0.05);border-radius:2px;flex-shrink:0;}
+.ii-fl{height:100%;border-radius:2px;}
+.ii-sc{font-family:'Share Tech Mono';font-size:10px;min-width:24px;text-align:right;}
+
+/* ── METRICS ── */
+.mg-wrap{padding:9px;}
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.mc-card{padding:10px 11px;border:1px solid var(--blW);background:rgba(255,255,255,0.012);transition:all 0.18s;cursor:default;}
+.mc-card:hover{border-color:var(--bl);}
+.mc-lbl{font-size:8px;color:var(--txD);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.mc-val{font-family:'Share Tech Mono';font-size:17px;font-weight:700;line-height:1;}
+.mc-sub{font-size:9px;color:var(--txD);margin-top:2px;}
+.mc-bar{height:2px;background:rgba(255,255,255,0.04);margin-top:6px;border-radius:1px;}
+.mc-bf{height:100%;border-radius:1px;}
+.cg{color:var(--gr);} .co{color:var(--sf);} .cr{color:var(--rd);} .cb{color:var(--bu);} .cy{color:var(--yw);}
+
+/* ── FEED ── */
+.fd-body{overflow-y:auto;flex:1;}
+.fd-body::-webkit-scrollbar{width:2px;}.fd-body::-webkit-scrollbar-thumb{background:var(--sf);}
+.ab{margin:7px;padding:9px 11px;border:1px solid rgba(255,58,58,0.3);background:rgba(255,58,58,0.04);position:relative;}
+.ab::before{content:'⚠ ACTIVE ALERT';position:absolute;top:-5px;left:9px;font-family:'Share Tech Mono';font-size:7px;letter-spacing:2px;color:var(--rd);background:var(--nv2);padding:0 5px;}
+.ab p{font-size:11px;line-height:1.5;color:#ffaaaa;}
+.feed-load{padding:18px;text-align:center;font-family:'Share Tech Mono';font-size:10px;color:var(--txD);letter-spacing:2px;}
+.sp{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,107,0,0.18);border-top-color:var(--sf);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:7px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ni{padding:10px 13px;border-bottom:1px solid var(--blW);cursor:pointer;transition:background 0.13s;animation:su 0.4s ease both;}
+.ni:hover{background:rgba(255,107,0,0.035);}
+@keyframes su{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.nm{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.ns{font-family:'Share Tech Mono';font-size:8px;letter-spacing:1px;color:var(--sf);text-transform:uppercase;}
+.nt{font-size:8px;color:var(--txD);margin-left:auto;}
+.ntl{font-size:11px;line-height:1.45;color:var(--txB);font-weight:500;}
+.nc{display:inline-flex;align-items:center;margin-top:5px;font-size:7px;padding:2px 7px;font-family:'Share Tech Mono';letter-spacing:1px;text-transform:uppercase;}
+.nbadge{display:inline-block;font-family:'Share Tech Mono';font-size:7px;color:var(--gr);border:1px solid rgba(0,165,80,0.28);padding:1px 5px;letter-spacing:1px;margin-left:5px;animation:nb 2s ease-in-out 4;}
+@keyframes nb{0%,100%{opacity:1;}50%{opacity:.2;}}
+.feed-err{padding:12px;margin:7px;border:1px solid rgba(255,58,58,0.18);background:rgba(255,58,58,0.03);font-size:10px;color:#ff9999;line-height:1.6;}
+.feed-err code{color:var(--sf);font-family:'Share Tech Mono';font-size:9px;}
+
+/* ── BOTTOM BAR ── */
+.bb{
+  background:rgba(5,6,15,0.99);border-top:1px solid var(--bl);
+  padding:6px 18px;display:flex;align-items:center;gap:0;
+  font-family:'Share Tech Mono';font-size:9px;color:var(--txD);letter-spacing:1px;flex-shrink:0;z-index:100;
+}
+.bb-i{padding:0 16px;border-right:1px solid var(--bl);}
+.bb-i:last-child{border-right:none;margin-left:auto;color:var(--gr);}
+.bb-i.sf{color:var(--sf);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-blk">
+    <div class="logo-hex">🇮🇳</div>
+    <div><div class="logo-nm">BHARATMONITOR</div><div class="logo-sb">India Intelligence Dashboard</div></div>
+  </div>
+  <div class="htabs">
+    <button class="htab on" onclick="setTab(this)"><span class="dot"></span>GEO-INTEL</button>
+    <button class="htab" onclick="setTab(this)"><span class="dot"></span>SECURITY</button>
+    <button class="htab" onclick="setTab(this)"><span class="dot"></span>ECONOMY</button>
+    <button class="htab" onclick="setTab(this)"><span class="dot"></span>DISASTER</button>
+    <button class="htab" onclick="setTab(this)"><span class="dot"></span>DEFENCE</button>
+    <button class="htab" onclick="setTab(this)"><span class="dot"></span>DIPLOMACY</button>
+  </div>
+  <div class="hright">
+    <div class="alert-pill" id="alertPill">⚠ 3 ACTIVE ALERTS</div>
+    <div class="clock-box" id="clk">IST 00:00:00</div>
+    <div class="live-ind"><div class="live-dot"></div>LIVE</div>
+  </div>
+</header>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-lbl">▶ MARKET + INTEL</div>
+  <div class="ticker-track"><div class="ticker-row" id="tkr"></div></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT -->
+  <div class="sb sb-l">
+    <div class="sh"><span class="sh-t">State Risk Matrix</span><span class="sh-b rd" id="sc">36 STATES/UTs</span></div>
+    <div class="s-scrl" id="stateList"></div>
+    <div class="sh" style="border-top:1px solid var(--bl)"><span class="sh-t">National Intel Index</span><span class="sh-b or">12 SIGNALS</span></div>
+    <div class="ii-body" id="intelIdx"></div>
+  </div>
+
+  <!-- MAP -->
+  <div class="mp">
+    <div class="mp-hdr">
+      <div class="mp-title">🗺 INDIA — LIVE SITUATIONAL MAP</div>
+      <div class="mp-btns">
+        <button class="mb on" onclick="setLayer(this,'risk')">RISK</button>
+        <button class="mb" onclick="setLayer(this,'security')">SECURITY</button>
+        <button class="mb" onclick="setLayer(this,'economy')">ECONOMY</button>
+        <button class="mb" onclick="setLayer(this,'disaster')">DISASTER</button>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div class="map-scan"></div>
+    <div class="mc tl"></div><div class="mc tr"></div>
+    <div class="mc bl"></div><div class="mc br"></div>
+    <div class="map-legend">
+      <div class="ml-h">RISK LEVEL</div>
+      <div class="ml-i"><div class="ml-s" style="background:#FF3A3A;box-shadow:0 0 5px #FF3A3A;"></div><span class="ml-l">Critical  80+</span></div>
+      <div class="ml-i"><div class="ml-s" style="background:#FF6B00;box-shadow:0 0 5px #FF6B00;"></div><span class="ml-l">Elevated 60–79</span></div>
+      <div class="ml-i"><div class="ml-s" style="background:#FFD700;box-shadow:0 0 5px #FFD700;"></div><span class="ml-l">Watch    40–59</span></div>
+      <div class="ml-i"><div class="ml-s" style="background:#00A550;box-shadow:0 0 5px #00A550;"></div><span class="ml-l">Normal   0–39</span></div>
+    </div>
+    <div class="map-coord" id="mapCoord">LAT — · LNG —</div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="sb sb-r">
+    <div class="sh"><span class="sh-t">Live Intel Feed</span><div class="sp"></div></div>
+    <div class="ab"><p id="alertText">⚡ Ceasefire violations along LoC — Army on high alert in J&amp;K. IAF increased sorties in Northern Sector.</p></div>
+    <div class="fd-body" id="feedBody"><div class="feed-load"><span class="sp"></span>FETCHING LIVE FEEDS...</div></div>
+    <div class="sh" style="border-top:1px solid var(--bl)"><span class="sh-t">India Vitals</span><span class="sh-b gr">REALTIME</span></div>
+    <div class="mg-wrap"><div class="mg" id="metricsGrid"></div></div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bb">
+  <span class="bb-i sf">🇮🇳 BHARATMONITOR v2.0</span>
+  <span class="bb-i" id="bbClk">IST —</span>
+  <span class="bb-i">MAP: OpenStreetMap + Real GeoJSON</span>
+  <span class="bb-i">SOURCES: PIB · ANI · NDTV · MEA · THE HINDU · TOI · MINT</span>
+  <span class="bb-i" id="feedSt">NEWS: CONNECTING...</span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════
+const STATES=[
+  {id:'JK',name:'Jammu & Kashmir',risk:92,lv:'c',tags:['LOC','MILITANCY','ARMY','CRPF'],col:'#FF3A3A',lat:33.7,lng:75.3},
+  {id:'MN',name:'Manipur',risk:85,lv:'c',tags:['ETHNIC','UNREST','AFSPA','CRPF'],col:'#FF3A3A',lat:24.6,lng:93.9},
+  {id:'AS',name:'Assam',risk:78,lv:'c',tags:['FLOOD','ULFA-I','BORDER','BODO'],col:'#FF3A3A',lat:26.2,lng:92.9},
+  {id:'DL',name:'Delhi NCR',risk:72,lv:'e',tags:['TERROR WATCH','CRIME','PROTEST'],col:'#FF6B00',lat:28.65,lng:77.2},
+  {id:'UP',name:'Uttar Pradesh',risk:70,lv:'e',tags:['COMMUNAL','LAW & ORDER','CRIME'],col:'#FF6B00',lat:26.8,lng:80.9},
+  {id:'NE',name:'NE States',risk:65,lv:'e',tags:['AFSPA','INSURGENCY','CHINA BORDER'],col:'#FF6B00',lat:25.5,lng:93.8},
+  {id:'WB',name:'West Bengal',risk:63,lv:'e',tags:['POLITICAL','ROHINGYA','BORDER'],col:'#FF6B00',lat:23.0,lng:87.8},
+  {id:'CG',name:'Chhattisgarh',risk:62,lv:'e',tags:['NAXAL','MAOISTS','TRIBAL'],col:'#FF6B00',lat:21.3,lng:81.9},
+  {id:'PB',name:'Punjab',risk:54,lv:'w',tags:['DRUGS','BORDER','MILITANCY'],col:'#FFD700',lat:31.1,lng:75.3},
+  {id:'RJ',name:'Rajasthan',risk:52,lv:'w',tags:['DROUGHT','BORDER','CRIME'],col:'#FFD700',lat:27.0,lng:74.2},
+  {id:'JH',name:'Jharkhand',risk:52,lv:'w',tags:['NAXAL','TRIBAL','MINING'],col:'#FFD700',lat:23.6,lng:85.3},
+  {id:'BR',name:'Bihar',risk:50,lv:'w',tags:['CRIME','FLOODS','POVERTY'],col:'#FFD700',lat:25.1,lng:85.3},
+  {id:'MP',name:'Madhya Pradesh',risk:48,lv:'w',tags:['NAXAL','DROUGHT','CRIME'],col:'#FFD700',lat:23.0,lng:78.6},
+  {id:'OD',name:'Odisha',risk:44,lv:'w',tags:['CYCLONE','NAXAL','COASTAL'],col:'#FFD700',lat:20.9,lng:85.1},
+  {id:'MH',name:'Maharashtra',risk:42,lv:'w',tags:['URBAN CRIME','FLOODING'],col:'#FFD700',lat:19.8,lng:75.7},
+  {id:'HR',name:'Haryana',risk:36,lv:'n',tags:['STABLE','FARMING'],col:'#00A550',lat:29.1,lng:76.1},
+  {id:'UA',name:'Uttarakhand',risk:35,lv:'n',tags:['CHINA BORDER','DISASTER PRONE'],col:'#00A550',lat:30.1,lng:79.6},
+  {id:'HP',name:'Himachal Pradesh',risk:33,lv:'n',tags:['BORDER','STABLE'],col:'#00A550',lat:31.1,lng:77.2},
+  {id:'SK',name:'Sikkim',risk:32,lv:'n',tags:['CHINA BORDER','STABLE'],col:'#00A550',lat:27.5,lng:88.5},
+  {id:'TG',name:'Telangana',risk:30,lv:'n',tags:['STABLE','TECH HUB'],col:'#00A550',lat:17.8,lng:79.1},
+  {id:'KA',name:'Karnataka',risk:28,lv:'n',tags:['STABLE','TECH HUB'],col:'#00A550',lat:15.3,lng:75.7},
+  {id:'GJ',name:'Gujarat',risk:26,lv:'n',tags:['STABLE','INDUSTRIAL'],col:'#00A550',lat:22.3,lng:71.2},
+  {id:'MG',name:'Meghalaya',risk:35,lv:'n',tags:['STABLE','COAL'],col:'#00A550',lat:25.5,lng:91.4},
+  {id:'AP',name:'Andhra Pradesh',risk:27,lv:'n',tags:['STABLE','COASTAL'],col:'#00A550',lat:15.9,lng:79.7},
+  {id:'TN',name:'Tamil Nadu',risk:22,lv:'n',tags:['STABLE','MARITIME'],col:'#00A550',lat:11.1,lng:78.7},
+  {id:'KL',name:'Kerala',risk:20,lv:'n',tags:['STABLE','FLOOD PRONE'],col:'#00A550',lat:10.9,lng:76.3},
+  {id:'GA',name:'Goa',risk:15,lv:'n',tags:['STABLE','TOURISM'],col:'#00A550',lat:15.3,lng:74.1},
+];
+
+const INTEL=[
+  {label:'Border Tension Index',score:82,color:'#FF3A3A'},
+  {label:'Internal Security',score:65,color:'#FF6B00'},
+  {label:'Economic Stability',score:72,color:'#00A550'},
+  {label:'Cyber Threat Level',score:58,color:'#FF6B00'},
+  {label:'Disaster Risk',score:51,color:'#FFD700'},
+  {label:'Political Stability',score:68,color:'#00A550'},
+  {label:'Energy Security',score:70,color:'#00A550'},
+  {label:'Defence Readiness',score:85,color:'#00A550'},
+  {label:'Diplomatic Standing',score:76,color:'#00A550'},
+  {label:'Social Cohesion',score:60,color:'#FFD700'},
+  {label:'Naxal Activity',score:55,color:'#FF6B00'},
+  {label:'Maritime Security',score:75,color:'#3A8FFF'},
+];
+
+const METRICS=[
+  {l:'SENSEX',v:'80,432',s:'+0.42% today',c:'cg',b:72},
+  {l:'NIFTY 50',v:'24,288',s:'+0.38% today',c:'cg',b:70},
+  {l:'INR/USD',v:'₹83.21',s:'-0.08% ▼',c:'co',b:45},
+  {l:'BRENT CRUDE',v:'$83.4',s:'+1.2% ▲',c:'co',b:60},
+  {l:'BORDER ALERT',v:'HIGH',s:'J&K LoC Active',c:'cr',b:88},
+  {l:'DRDO STATUS',v:'GREEN',s:'All systems op',c:'cg',b:90},
+  {l:'GDP FY26',v:'7.1%',s:'IMF estimate',c:'cb',b:71},
+  {l:'WPI INFLATION',v:'3.8%',s:'Feb 2026',c:'cy',b:38},
+];
+
+const TICKER=[
+  {l:'SENSEX',v:'80,432',c:'+0.42%',t:'u'},
+  {l:'NIFTY',v:'24,288',c:'+0.38%',t:'u'},
+  {l:'INR/USD',v:'₹83.21',c:'-0.08%',t:'d'},
+  {l:'GOLD',v:'₹65,240/10g',c:'+0.6%',t:'u'},
+  {l:'BRENT OIL',v:'$83.4',c:'+1.2%',t:'u'},
+  {l:'LOC ALERT',v:'ELEVATED',c:'J&K',t:'n'},
+  {l:'CYBER ALERT',v:'MODERATE',c:'WATCH',t:'n'},
+  {l:'INDIA GDP',v:'7.1%',c:'STABLE',t:'u'},
+  {l:'DEFENCE IDX',v:'HIGH',c:'DEFCON-4',t:'n'},
+  {l:'INR/EUR',v:'₹89.45',c:'-0.12%',t:'d'},
+  {l:'INDIA CPI',v:'4.2%',c:'STABLE',t:'u'},
+  {l:'FOREX RESERVES',v:'$680B',c:'+2.1%',t:'u'},
+];
+
+// State name → id
+const SNM={
+  'Jammu & Kashmir':'JK','Jammu and Kashmir':'JK','J & K':'JK','Ladakh':'JK',
+  'Manipur':'MN','Assam':'AS',
+  'NCT of Delhi':'DL','Delhi':'DL','Dilli':'DL',
+  'Uttar Pradesh':'UP',
+  'Nagaland':'NE','Mizoram':'NE','Tripura':'NE','Arunachal Pradesh':'NE',
+  'West Bengal':'WB','Chhattisgarh':'CG','Punjab':'PB','Rajasthan':'RJ',
+  'Jharkhand':'JH','Bihar':'BR','Madhya Pradesh':'MP','Odisha':'OD','Orissa':'OD',
+  'Maharashtra':'MH','Haryana':'HR','Uttarakhand':'UA','Uttaranchal':'UA',
+  'Himachal Pradesh':'HP','Sikkim':'SK','Telangana':'TG','Karnataka':'KA',
+  'Gujarat':'GJ','Meghalaya':'MG','Andhra Pradesh':'AP','Tamil Nadu':'TN',
+  'Kerala':'KL','Goa':'GA',
+  'Chandigarh':'HR','Puducherry':'TN','Pondicherry':'TN',
+  'Daman and Diu':'GJ','Dadra and Nagar Haveli':'GJ',
+  'Andaman and Nicobar Islands':'TN','Lakshadweep':'KL',
+};
+
+const SMAP={};STATES.forEach(s=>SMAP[s.id]=s);
+
+function getSt(name){const id=SNM[name];return id?SMAP[id]:null;}
+function getCol(name,alpha=0.5){const s=getSt(name);return s?s.col:'#2A3F6F';}
+
+const HOTSPOTS=[
+  {lat:34.0,lng:74.8,label:'J&K LOC',info:'Active ceasefire violations — Army HALO',col:'#FF3A3A'},
+  {lat:28.7,lng:77.2,label:'Delhi Security',info:'Intelligence input active — NSG on standby',col:'#FF6B00'},
+  {lat:26.2,lng:92.9,label:'Assam FLOOD',info:'Brahmaputra above danger mark — NDRF deployed',col:'#FFD700'},
+  {lat:24.7,lng:93.9,label:'Manipur UNREST',info:'Ethnic tension — CRPF combing operations',col:'#FF3A3A'},
+  {lat:21.3,lng:81.9,label:'Bastar NAXAL',info:'Active anti-Maoist ops — CoBRA units engaged',col:'#FF6B00'},
+  {lat:20.9,lng:85.1,label:'Odisha CYCLONE',info:'Deep depression — Bay of Bengal system active',col:'#FFD700'},
+  {lat:27.1,lng:88.6,label:'Sikkim BORDER',info:'PLA activity reported near Nathula Pass',col:'#FF6B00'},
+];
+
+// ════════════════════════════════════════
+// MAP
+// ════════════════════════════════════════
+const map=L.map('map',{center:[22.5,82.5],zoom:5,zoomControl:true,attributionControl:false,preferCanvas:false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
+
+map.on('mousemove',e=>{
+  document.getElementById('mapCoord').textContent=`LAT ${e.latlng.lat.toFixed(3)}° · LNG ${e.latlng.lng.toFixed(3)}°`;
+});
+
+let geoLayer=null;
+const LAYER_COLORS={
+  risk:s=>s?s.col:'#2A3F6F',
+  security:s=>{
+    if(!s)return'#2A3F6F';
+    const hi=['MILITANCY','NAXAL','TERROR WATCH','AFSPA','MAOISTS','INSURGENCY'];
+    const md=['UNREST','DRUGS','CRIME','COMMUNAL'];
+    if(s.tags.some(t=>hi.includes(t)))return'#FF3A3A';
+    if(s.tags.some(t=>md.includes(t)))return'#FF6B00';
+    return'#00A550';
+  },
+  economy:s=>{
+    if(!s)return'#2A3F6F';
+    const hi=['KA','TN','GJ','MH','TG','DL','AP'];
+    const lo=['BR','JH','CG','UP'];
+    if(hi.includes(s.id))return'#00A550';
+    if(lo.includes(s.id))return'#FF6B00';
+    return'#FFD700';
+  },
+  disaster:s=>{
+    if(!s)return'#2A3F6F';
+    const hi=['AS','OD','MH','UA'];
+    const md=['BR','JH','RJ','TN','KL'];
+    if(hi.includes(s.id))return'#FF3A3A';
+    if(md.includes(s.id))return'#FF6B00';
+    return'#00A550';
+  },
+};
+
+let currentLayer='risk';
+
+function styleFeature(feature,layerKey){
+  const name=feature.properties?.NAME_1||feature.properties?.st_nm||feature.properties?.name||feature.properties?.STATE||feature.properties?.shapeName||'';
+  const s=getSt(name);
+  const fn=LAYER_COLORS[layerKey]||LAYER_COLORS.risk;
+  const col=fn(s);
+  return{fillColor:col,fillOpacity:0.42,color:'#181C3A',weight:1.1,opacity:0.85};
+}
+
+async function loadMap(){
+  // Try multiple reliable CDN sources for India GeoJSON
+  const URLS=[
+    'https://cdn.jsdelivr.net/npm/india-geojson@1.0.1/india-states.geojson',
+    'https://raw.githubusercontent.com/Subhash9325/GeoJson-Data-of-Indian-States/master/Indian_States',
+    'https://raw.githubusercontent.com/adarshbiradar/maps-geojson/master/states/india.json',
+  ];
+  let data=null;
+  for(const url of URLS){
+    try{
+      const r=await fetch(url,{signal:AbortSignal.timeout(9000)});
+      if(r.ok){data=await r.json();break;}
+    }catch(e){continue;}
+  }
+
+  if(data){
+    geoLayer=L.geoJSON(data,{
+      style:f=>styleFeature(f,currentLayer),
+      onEachFeature:(feature,layer)=>{
+        const name=feature.properties?.NAME_1||feature.properties?.st_nm||feature.properties?.name||feature.properties?.STATE||feature.properties?.shapeName||'Unknown';
+        const s=getSt(name);
+        const rl=!s?'Unknown':s.lv==='c'?'CRITICAL':s.lv==='e'?'ELEVATED':s.lv==='w'?'WATCH':'NORMAL';
+        const rlCol=!s?'#999':s.col;
+        layer.bindTooltip(`
+          <div class="tt-n">${name}</div>
+          <div class="tt-r"><span>Risk Score</span><span class="tt-v">${s?s.risk:'N/A'}/100</span></div>
+          <div class="tt-r"><span>Status</span><span class="tt-v" style="color:${rlCol}">${rl}</span></div>
+          ${s?`<div class="tt-r"><span>Key Signals</span><span class="tt-v">${s.tags.slice(0,2).join(' · ')}</span></div>`:''}
+        `,{sticky:true,className:'',offset:[0,0]});
+        layer.on({
+          mouseover:e=>{
+            e.target.setStyle({fillOpacity:0.72,weight:2.2,color:s?s.col:'#FF6B00'});
+            e.target.bringToFront();
+          },
+          mouseout:e=>geoLayer.resetStyle(e.target),
+          click:e=>{map.fitBounds(e.target.getBounds(),{padding:[28,28]});}
+        });
+      }
+    }).addTo(map);
+  } else {
+    // fallback — circle markers
+    STATES.forEach(s=>{
+      const r=6+Math.round((s.risk-15)/4.5);
+      L.circleMarker([s.lat,s.lng],{
+        radius:Math.max(6,Math.min(20,r)),
+        fillColor:s.col,color:s.col,weight:1,fillOpacity:0.65,opacity:0.9
+      }).bindTooltip(`<div class="tt-n">${s.name}</div><div class="tt-r"><span>Risk</span><span class="tt-v">${s.risk}/100</span></div>`,{sticky:true})
+      .addTo(map);
+    });
+  }
+
+  addHotspots();
+}
+
+function addHotspots(){
+  HOTSPOTS.forEach(h=>{
+    const icon=L.divIcon({className:'',html:`
+      <div style="width:14px;height:14px;border-radius:50%;background:${h.col};border:2px solid rgba(255,255,255,0.35);box-shadow:0 0 12px ${h.col},0 0 24px ${h.col}55;position:relative;">
+        <div style="position:absolute;width:32px;height:32px;border-radius:50%;border:1.5px solid ${h.col}70;top:50%;left:50%;transform:translate(-50%,-50%);animation:pulseR 2.2s ease-out infinite;"></div>
+      </div>
+    `,iconSize:[14,14],iconAnchor:[7,7]});
+    L.marker([h.lat,h.lng],{icon,zIndexOffset:1000})
+      .bindTooltip(`<div class="tt-n">${h.label}</div><div style="font-size:10px;color:var(--tx);margin-top:3px;">${h.info}</div>`,{sticky:true})
+      .addTo(map);
+  });
+}
+
+// Layer switch
+function setLayer(btn,type){
+  document.querySelectorAll('.mb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  currentLayer=type;
+  if(geoLayer) geoLayer.eachLayer(l=>{if(l.feature)l.setStyle(styleFeature(l.feature,type));});
+}
+
+// ════════════════════════════════════════
+// RENDER PANELS
+// ════════════════════════════════════════
+function renderStates(){
+  const sorted=[...STATES].sort((a,b)=>b.risk-a.risk);
+  document.getElementById('stateList').innerHTML=sorted.map((s,i)=>`
+    <div class="s-row ${s.lv}" style="animation-delay:${i*0.025}s" onclick="flyTo(${s.lat},${s.lng})">
+      <div class="s-sc ${s.lv}">${s.risk}</div>
+      <div class="s-inf">
+        <div class="s-nm">${s.name}</div>
+        <div class="s-tgs">${s.tags.slice(0,3).map(t=>`<span class="tag ${s.lv==='c'?'tr':s.lv==='e'?'to':s.lv==='w'?'ty':'tg'}">${t}</span>`).join('')}</div>
+        <div class="s-bar"><div class="s-bf" style="width:${s.risk}%;background:${s.col};box-shadow:0 0 4px ${s.col}55;"></div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function flyTo(lat,lng){map.flyTo([lat,lng],7,{duration:1.1});}
+
+function renderIntel(){
+  document.getElementById('intelIdx').innerHTML=INTEL.map(s=>`
+    <div class="ii-row">
+      <div class="ii-lbl">${s.label}</div>
+      <div class="ii-tr"><div class="ii-fl" style="width:${s.score}%;background:${s.color};box-shadow:0 0 4px ${s.color}44;"></div></div>
+      <div class="ii-sc" style="color:${s.color}">${s.score}</div>
+    </div>
+  `).join('');
+}
+
+function renderMetrics(){
+  document.getElementById('metricsGrid').innerHTML=METRICS.map(m=>`
+    <div class="mc-card">
+      <div class="mc-lbl">${m.l}</div>
+      <div class="mc-val ${m.c}">${m.v}</div>
+      <div class="mc-sub">${m.s}</div>
+      <div class="mc-bar"><div class="mc-bf" style="width:${m.b}%" class="${m.c}"></div></div>
+    </div>
+  `).join('');
+  // inject bar fill colors
+  document.querySelectorAll('.mc-bf').forEach((el,i)=>{
+    const cols={cg:'#00A550',co:'#FF6B00',cr:'#FF3A3A',cb:'#3A8FFF',cy:'#FFD700'};
+    el.style.background=cols[METRICS[i]?.c]||'#FF6B00';
+  });
+}
+
+function renderTicker(){
+  const items=[...TICKER,...TICKER];
+  document.getElementById('tkr').innerHTML=items.map(t=>`
+    <div class="ti">
+      <span class="tl">${t.l}</span>
+      <span class="tv">${t.v}</span>
+      <span class="${t.t==='u'?'tu':t.t==='d'?'td':'tn'}">${t.c}</span>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════
+// LIVE NEWS — RSS via allorigins proxy
+// ════════════════════════════════════════
+const RSS=[
+  {n:'NDTV',u:'https://feeds.feedburner.com/ndtvnews-top-stories'},
+  {n:'TOI',u:'https://timesofindia.indiatimes.com/rssfeedstopstories.cms'},
+  {n:'THE HINDU',u:'https://www.thehindu.com/news/national/feeder/default.rss'},
+  {n:'MINT',u:'https://www.livemint.com/rss/news'},
+  {n:'BUSINESS STD',u:'https://www.business-standard.com/rss/home_page_top_stories.rss'},
+];
+
+const CKW={
+  'DEFENCE':['army','airforce','navy','military','missile','drdo','iaf','bsf','crpf','nsg','coastguard','defence','iac','fighter','tank','artillery'],
+  'BORDER':['border','loc','china','pakistan','pla','doklam','arunachal','ladakh','ceasefire','infiltration','sino','bsf','line of actual'],
+  'SECURITY':['terror','naxal','maoist','militant','encounter','blast','ied','lashkar','jaish','isis','attack','explosion','killed','gunfight'],
+  'ECONOMY':['gdp','sensex','nifty','rbi','inflation','rupee','budget','economy','market','trade','export','fdi','repo rate','growth','sebi'],
+  'DISASTER':['flood','cyclone','earthquake','drought','disaster','ndrf','landslide','heatwave','storm','rain','tsunami','relief'],
+  'DIPLOMACY':['modi','pm ','mea','united nations','g20','brics','sco','foreign','bilateral','summit','treaty','envoy','ambassador'],
+};
+const CST={'DEFENCE':'tr','BORDER':'tr','SECURITY':'to','ECONOMY':'tg','DISASTER':'ty','DIPLOMACY':'tb','GENERAL':'tg'};
+
+function categ(txt){
+  const l=txt.toLowerCase();
+  for(const [cat,words] of Object.entries(CKW)) if(words.some(w=>l.includes(w)))return cat;
+  return'GENERAL';
+}
+
+function tAgo(d){
+  try{const diff=(Date.now()-new Date(d))/1000;if(diff<60)return'just now';if(diff<3600)return`${~~(diff/60)}m ago`;if(diff<86400)return`${~~(diff/3600)}h ago`;return`${~~(diff/86400)}d ago`;}catch{return'';}
+}
+
+let newsCache=[];
+
+async function fetchFeed(f){
+  const proxy=`https://api.allorigins.win/get?url=${encodeURIComponent(f.u)}`;
+  try{
+    const r=await fetch(proxy,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok)return[];
+    const d=await r.json();
+    const xml=new DOMParser().parseFromString(d.contents,'text/xml');
+    return[...xml.querySelectorAll('item')].slice(0,8).map(item=>({
+      src:f.n,
+      title:(item.querySelector('title')?.textContent||'').trim(),
+      link:(item.querySelector('link')?.textContent||'#').trim(),
+      date:(item.querySelector('pubDate')?.textContent||new Date().toUTCString()).trim(),
+      isNew:true,
+    })).filter(x=>x.title.length>8);
+  }catch{return[];}
+}
+
+async function loadNews(){
+  document.getElementById('feedSt').textContent='NEWS: FETCHING...';
+  const res=await Promise.allSettled(RSS.map(f=>fetchFeed(f)));
+  const all=res.filter(r=>r.status==='fulfilled').flatMap(r=>r.value)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(all.length===0){renderFallback();return;}
+  newsCache=all;
+  renderNews(all);
+  document.getElementById('feedSt').textContent=`NEWS: ${all.length} ITEMS LIVE ●`;
+}
+
+function renderNews(items){
+  const html=items.slice(0,28).map((it,i)=>{
+    const cat=categ(it.title);
+    return`<div class="ni" style="animation-delay:${i*0.035}s" onclick="window.open('${it.link}','_blank')">
+      <div class="nm"><span class="ns">${it.src}</span><span class="nt">${tAgo(it.date)}</span></div>
+      <div class="ntl">${it.title}</div>
+      <span class="nc tag ${CST[cat]||'tg'}">${cat}</span>${it.isNew?'<span class="nbadge">NEW</span>':''}
+    </div>`;
+  }).join('');
+  document.getElementById('feedBody').innerHTML=html;
+  items.forEach(i=>i.isNew=false);
+}
+
+const FALLBACK=[
+  {src:'ANI',time:'6m ago',cat:'DEFENCE',title:'IAF conducts surprise readiness drill along northern borders — 32 sorties in 4 hours'},
+  {src:'PIB',time:'14m ago',cat:'DIPLOMACY',title:'PM Modi chairs NSC meeting on Indo-Pacific framework — Quad military cooperation expanded'},
+  {src:'MEA',time:'23m ago',cat:'BORDER',title:'India lodges formal protest with Beijing over PLA incursion near Depsang Plains in Eastern Ladakh'},
+  {src:'NDTV',time:'37m ago',cat:'DISASTER',title:'Cyclone Alert: IMD red warning for Odisha and AP coastlines — NDRF teams pre-positioned'},
+  {src:'THE HINDU',time:'49m ago',cat:'ECONOMY',title:'RBI holds repo rate at 6.25% in 5-1 vote; signals easing cycle may start Q2 FY27'},
+  {src:'DD NEWS',time:'1h ago',cat:'DEFENCE',title:'DRDO tests QRSAM air defence system — 95% hit accuracy under night conditions and EW jamming'},
+  {src:'TRIBUNE',time:'1h ago',cat:'SECURITY',title:'Punjab Police busts cross-border drug network; Pakistani drone with 3kg heroin recovered near Amritsar'},
+  {src:'TOI',time:'2h ago',cat:'SECURITY',title:'Bastar encounter: 4 Maoists neutralised in overnight CoBRA-CRPF operation in Narayanpur district'},
+  {src:'MINT',time:'2h ago',cat:'ECONOMY',title:'India FDI hits record ₹8.2 lakh crore in FY26 — semiconductor and defence manufacturing lead surge'},
+  {src:'ANI',time:'3h ago',cat:'BORDER',title:'China deploys additional PLA troops near Arunachal — India Army reinforces Kameng and Siang sectors'},
+  {src:'THE HINDU',time:'3h ago',cat:'DIPLOMACY',title:'India-US 2+2 Dialogue: ₹28,000 crore deal for 31 MQ-9B Predator drones confirmed for tri-services'},
+  {src:'NDTV',time:'4h ago',cat:'SECURITY',title:'J&K: Security forces foil infiltration bid at Keran sector — 2 militants killed, 1 AK-47 recovered'},
+];
+
+function renderFallback(){
+  const html=FALLBACK.map((n,i)=>`
+    <div class="ni" style="animation-delay:${i*0.04}s">
+      <div class="nm"><span class="ns">${n.src}</span><span class="nt">${n.time}</span></div>
+      <div class="ntl">${n.title}</div>
+      <span class="nc tag ${CST[n.cat]||'tg'}">${n.cat}</span>
+    </div>
+  `).join('');
+  document.getElementById('feedBody').innerHTML=`
+    <div class="feed-err">
+      ℹ Live RSS blocked by browser CORS when opening HTML directly.<br>
+      To get live news: run <code>npx serve .</code> or deploy to Vercel/Netlify.<br>
+      <strong>Showing cached intelligence headlines:</strong>
+    </div>${html}`;
+  document.getElementById('feedSt').textContent='NEWS: OFFLINE MODE';
+}
+
+// ════════════════════════════════════════
+// CLOCK
+// ════════════════════════════════════════
+function updateClock(){
+  const t=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  document.getElementById('clk').textContent=`IST ${t}`;
+  document.getElementById('bbClk').textContent=`IST ${t}`;
+}
+
+// ════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════
+function setTab(btn){document.querySelectorAll('.htab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+// ════════════════════════════════════════
+// PULSE RING KEYFRAMES (inline for Leaflet markers)
+// ════════════════════════════════════════
+const style=document.createElement('style');
+style.textContent=`
+@keyframes pulseR{
+  0%{width:14px;height:14px;opacity:0.8;}
+  100%{width:38px;height:38px;opacity:0;}
+}`;
+document.head.appendChild(style);
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+(async()=>{
+  renderTicker();
+  renderStates();
+  renderIntel();
+  renderMetrics();
+  updateClock();
+  setInterval(updateClock,1000);
+  await loadMap();
+  await loadNews();
+  setInterval(loadNews,5*60*1000);
+})();
+</script>
+</body>
+</html>
